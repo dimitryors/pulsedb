@@ -1,5 +1,6 @@
 -module(pulsedb_realtime).
 -export([subscribe/2, unsubscribe/1]).
+-export([subscriptions_for_pid/1]).
 -export([start_link/0, init/1, terminate/2, handle_info/2, handle_call/3]).
 
 -record(subscriptions, 
@@ -22,6 +23,9 @@ subscribe(Query0, Tag) ->
 unsubscribe(Tag) ->
   gen_server:call(?MODULE, {unsubscribe, self(), Tag}).
 
+
+subscriptions_for_pid(Pid) ->
+  gen_server:call(?MODULE, {subscriptions_for,Pid}).
 
 start_link() -> 
   gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
@@ -54,15 +58,24 @@ handle_call({subscribe, Pid, Query, Tag},_, #subscriptions{clients=Clients0}=Sta
   {reply, ok, State#subscriptions{clients=Clients}};
 
 
+handle_call({subscriptions_for, Pid}, _, #subscriptions{clients = Clients} = State) ->
+  Subscriptions = lists:flatmap(fun({Query,_,Pids}) ->
+    [{Tag,pulsedb_query:render(Query)} || {P,Tag,_} <- Pids, P == Pid]    
+  end, Clients),
+  {reply, lists:sort(Subscriptions), State};
+
+
 handle_call({unsubscribe, Pid, Tag},_, #subscriptions{clients=Clients0}=State) ->
-  Clients1 = [begin
-                {Demonitor, Rest} = find_subscription(Pid, Tag, Pids),
-                [erlang:demonitor(Ref) || {_,_,Ref} <- Demonitor],
-                {Query, UTC, Rest}
-                end
-              || {Query,UTC,Pids} <- Clients0],
-  Clients = [C || {Pids,_,_}=C <- Clients1, length(Pids) > 0],
+  Clients1 = 
+  [begin
+    {Demonitor, Rest} = find_subscription(Pid, Tag, Pids),
+    [erlang:demonitor(Ref) || {_,_,Ref} <- Demonitor],
+    {Query, UTC, Rest}
+  end || {Query,UTC,Pids} <- Clients0],
+  Clients = [C || {_,_,Pids}=C <- Clients1, length(Pids) > 0],
   {reply, ok, State#subscriptions{clients=Clients}}.
+
+
 
 
 handle_info(tick, #subscriptions{clients=Clients}=State) ->

@@ -1,3 +1,11 @@
+pulsedb (0.7.1)
+
+  * fixing pulse subscribe/unsubscribe on several opened graphs #1811
+
+pulsedb (0.7)
+
+  * collapse contigious disk write requests
+
 pulsedb (0.6.1)
 
   * migration fix

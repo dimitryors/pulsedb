@@ -10,9 +10,9 @@ all() ->
 groups() ->
   [{subscribe, [parallel], [
     subscribe,
-    subscribe_and_die
+    subscribe_and_die,
     % subscribe_twice,
-    % unsubscribe
+    unsubscribe
   ]}].
 
 
@@ -37,7 +37,7 @@ subscribe(_) ->
 
 subscribe_and_die(_) ->
   N = ?TICK_COUNT,
-  {UTC,Delay} = pulsedb:current_second(),
+  {UTC,_Delay} = pulsedb:current_second(),
   Self = self(),
   C1 = spawn(fun () ->
                pulsedb_realtime:subscribe(<<"input4">>, i),
@@ -115,21 +115,15 @@ subscribe_and_die(_) ->
 %   after 2000 -> ok 
 %   end.
 
-% unsubscribe(_) ->
-%   N = ?TICK_COUNT,
-%   {UTC,_} = pulsedb:current_second(),
-%   pulsedb_realtime:subscribe(<<"input">>, i),
-%   Self = self(),
-%   spawn(fun () -> send_tick(100, {<<"input">>, UTC-100, 1, [{<<"name">>,<<"src1">>}]}), Self ! go end),
-%   receive go -> ok after 1000 -> error(timeout) end,
+unsubscribe(_) ->
+  pulsedb_realtime:subscribe(<<"input2">>, i),
+  [{i,<<"input2">>}] = pulsedb_realtime:subscriptions_for_pid(self()),
+  pulsedb_realtime:subscribe(<<"input5">>, j),
+  [{i,<<"input2">>},{j,<<"input5">>}] = pulsedb_realtime:subscriptions_for_pid(self()),
 
-%   ok = collect_ticks(N,500),
-%   pulsedb_realtime:unsubscribe(i),
-%   send_tick(N, {<<"input">>, UTC+6, 10, [{<<"name">>,<<"src1">>}]}),
-%   receive
-%     _ -> error(received_pulse)
-%   after 2000 -> ok 
-%   end.
+  pulsedb_realtime:unsubscribe(i),
+  [{j,<<"input5">>}] = pulsedb_realtime:subscriptions_for_pid(self()),
+  ok.
   
   
 send_tick(0, _) -> ok;
@@ -145,5 +139,7 @@ collect_ticks(N,Tag,Timeout) ->
   receive
     {pulse, Tag, _,_} -> collect_ticks(N-1,Tag,Timeout)
   after
-    Timeout -> ct:pal("messages: ~p", [process_info(self(),messages)]), error(collect_timed_out)
+    Timeout -> ct:pal("Message queue: ~p when still need to read ~p ticks with tag ~p", [
+      process_info(self(),messages), N, Tag
+    ]), error(collect_timed_out)
   end.
