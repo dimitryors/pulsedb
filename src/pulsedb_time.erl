@@ -31,7 +31,7 @@ parse(<<Y:4/binary, "-", Mon:2/binary, "-", D:2/binary, " ", H:2/binary, ":", Mi
 
 parse(<<"-", Bin/binary>>) ->
   T = parse(Bin),
-  utc(erlang:now()) - T;
+  erlang:system_time(seconds) - T;
 
 parse(<<T:1/binary, "m">>) -> 60*binary_to_integer(T);
 parse(<<T:2/binary, "m">>) -> 60*binary_to_integer(T);

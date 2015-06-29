@@ -35,8 +35,9 @@
   config :: storage_config()
 }).
 
+-type chunk_entry() :: {Chunk :: non_neg_integer(), Offset :: non_neg_integer(), Length :: non_neg_integer()}.
 
--callback required_chunks(From :: utc(), To :: utc(), Date :: utc(), Config :: storage_config()) -> Chunks :: list(tuple(Chunk :: non_neg_integer(), Offset :: non_neg_integer(), Length :: non_neg_integer())).
+-callback required_chunks(From :: utc(), To :: utc(), Date :: utc(), Config :: storage_config()) -> Chunks :: list(chunk_entry()).
 -callback required_partitions(UTC :: utc(), UTC :: utc(), Config :: storage_config()) -> PathList :: list(file:filename()).
 
 -callback chunk_number(UTC :: utc(), Config :: storage_config()) -> Num :: non_neg_integer().
@@ -238,7 +239,7 @@ source_name(Name, Tags, #disk_db{cached_source_names = SourceNames} = DB) ->
     {_, SourceName} ->
       {SourceName, DB};
     false ->
-      {_,Sec,_} = erlang:now(),
+      Sec = erlang:system_time(seconds),
       Cached =  length(SourceNames),
       SourceName = metric_name(Name, Tags),
       CachedSourceNames = if Sec rem 10 == 0 andalso Cached > 100 -> [{{Name,Tags},SourceName}] ++ lists:sublist(SourceNames, Cached div 2);
