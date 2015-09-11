@@ -34,6 +34,9 @@ open(Path, Options) when is_binary(Path) ->
 open(Name, Path) when is_atom(Name), is_binary(Path) ->
   open(Name, [{url, <<"file://", Path/binary>>}]);
 
+open(Name, Path) when is_atom(Name), is_list(Path) ->
+  open(Name, [{url, <<"file://", (list_to_binary(Path))/binary>>}]);
+
 open(Name, Options) when is_atom(Name) ->
   case Name of
     undefined ->
